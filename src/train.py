@@ -26,6 +26,7 @@ def train(args):
     # first load the dataset
     train_loader, val_loader, test_loader = load_dataset(args)
     # visualize_batch(train_loader)
+    # exit()
     
     # init tensorboard
     writer = SummaryWriter()
@@ -112,10 +113,10 @@ def validate(model, val_loader):
 def load_dataset(args):
     if args.dataset == "mnist":
         return load_mnist(args)
-    # elif dataset == "svhn":
-    #     return load_svhn()
-    # elif dataset == "usps":
-    #     return load_usps()
+    elif args.dataset == "svhn":
+        return load_svhn(args)
+    elif args.dataset == "usps":
+        return load_usps(args)
 
 # ================================ models =====================================
 

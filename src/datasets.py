@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 def load_mnist(args):
     transform=transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
             ])
@@ -23,6 +24,39 @@ def load_mnist(args):
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
 
     return train_loader, val_loader, test_loader
+
+def load_svhn(args):
+    transform=transforms.Compose([
+            transforms.Resize((28,28)),
+            transforms.ToTensor()
+            ])
+
+    train_set = datasets.SVHN('../data',download=True,transform=transform)
+    # test_set = datasets.SVHN('../data',transform=transform)
+    train_split, val_split = torch.utils.data.random_split(train_set, [5/6, 1-5/6])
+
+    train_loader = torch.utils.data.DataLoader(train_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(val_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    # test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
+
+    return train_loader, val_loader, None
+
+def load_usps(args):
+    transform=transforms.Compose([
+            transforms.Resize((28,28)),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor()
+            ])
+
+    train_set = datasets.USPS('../data',download=True,train=True,transform=transform)
+    test_set = datasets.USPS('../data',download=True,train=False,transform=transform)
+    train_split, val_split = torch.utils.data.random_split(train_set, [5/6, 1-5/6])
+
+    train_loader = torch.utils.data.DataLoader(train_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(val_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
+
+    return train_loader, val_loader, None
 
 def visualize_batch(data_loader):
 
