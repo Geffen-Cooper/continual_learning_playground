@@ -6,6 +6,7 @@ model.eval()
 import numpy as np
 import copy
 from matplotlib.widgets import Slider, Button, RadioButtons
+import cv2
 
 # sample execution (requires torchvision)
 from PIL import Image
@@ -21,7 +22,13 @@ samp = Slider(ax0, 'amnt', 0, 3.0, valinit=1,orientation="vertical")
 axr = fig.add_axes([0.05, 0.7, 0.08, 0.15])
 axi = fig.add_axes([0.05, 0.5, 0.08, 0.15])
 radio = RadioButtons(axr, ('brightness', 'noise', 'sharpness'), active=0)
-radio2 = RadioButtons(axi, ('cup', 'sock', 'water bottle','backpack'), active=0)
+radio2 = RadioButtons(axi, ('cup', 'sock', 'water bottle','backpack','live'), active=0)
+
+cap = cv2.VideoCapture(0)
+
+# Check if camera opened successfully
+if (cap.isOpened()== False):
+    print("Error opening video file")
 
 # unnormalize the tensor
 def get_og(input_tensor):
@@ -76,10 +83,12 @@ def update(val):
     # move the input and model to GPU for speed if available
     if torch.cuda.is_available():
         input_batch = input_batch.to('cuda')
-        resnet18.to('cuda')
+        # resnet18.to('cuda')
+        model.to('cuda')
 
     with torch.no_grad():
-        output = resnet18(input_batch)
+        # output = resnet18(input_batch)
+        output = model(input_batch)
     # Tensor of shape 1000, with confidence scores over Imagenet's 1000 classes
     # print(output[0])
     # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
@@ -102,11 +111,13 @@ def update(val):
         colors[idx] = 'r'
     ax2.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25,color=colors)
     ax2.set_ylim(0,1)
+    plt.draw()
 samp.on_changed(update)
 
 def update2(val):
     global corr
     corr = val
+    update(1)
 radio.on_clicked(update2)
 
 def update3(val):
@@ -115,9 +126,16 @@ def update3(val):
     global og_input_img
     img_class = val
     # load image
-    input_image = Image.open(img_class+".JPEG")
+    if img_class == "live":
+        ret, frame = cap.read()
+        if ret == True:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            input_image = Image.fromarray(frame)
+    else:
+        input_image = Image.open(img_class+".JPEG")
     og_input_tensor = preprocess(input_image)
     og_input_img = get_og(og_input_tensor)
+    update(1)
 radio2.on_clicked(update3)
 
 plt.show()
