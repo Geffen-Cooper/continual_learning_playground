@@ -10,11 +10,14 @@ import copy
 from PIL import Image
 from torchvision import transforms
 import time
+import torchvision.models as models
 
+resnet18 = models.resnet18(pretrained=True)
+resnet18.eval()
 # load image
 input_image = Image.open("Basketball2.jpeg")
 
-fig, (ax1, ax2) = plt.subplots(1, 2,figsize=(15, 15))
+fig, (ax1, ax2) = plt.subplots(1, 2,figsize=(15, 5))
 plt.ion()
 plt.show()
 
@@ -27,6 +30,7 @@ def get_og(input_tensor):
     input_tensor[:][:][1]+=(0.455)
     input_tensor[:][:][2]*=(.225)
     input_tensor[:][:][2]+=(0.405)
+    input_tensor = (input_tensor-torch.min(input_tensor))/torch.max(input_tensor-torch.min(input_tensor))
     return input_tensor
 
 with open("imagenet_classes.txt", "r") as f:
@@ -42,16 +46,15 @@ preprocess = transforms.Compose([
 input_tensor = preprocess(input_image)
 og_img = get_og(input_tensor)
 for i in range(40):
-    
     input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
     if torch.cuda.is_available():
         input_batch = input_batch.to('cuda')
-        model.to('cuda')
+        resnet18.to('cuda')
 
     with torch.no_grad():
-        output = model(input_batch)
+        output = resnet18(input_batch)
     # Tensor of shape 1000, with confidence scores over Imagenet's 1000 classes
     # print(output[0])
     # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
@@ -59,16 +62,34 @@ for i in range(40):
 
     # ax2.clear()
     plt.pause(0.001)
+    # print(torch.max(og_img),torch.min(og_img))
+    if i == 1:
+        time.sleep(2)
     ax1.imshow(og_img.permute(1, 2, 0))
     
     # Show top categories per image
     top5_prob, top5_catid = torch.topk(probabilities, 5)
     labels = []
-    for i in range(top5_prob.size(0)):
-        labels.append(categories[top5_catid[i].cpu()])
+    for j in range(top5_prob.size(0)):
+        labels.append(categories[top5_catid[j].cpu()])
+    try:
+        idx = labels.index("basketball")
+    except:
+        idx=6
     ax2.clear()
-    ax2.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25)
+    colors = ['b']*5
+    if idx < 5:
+        colors[idx] = 'r'
+    ax2.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25,color=colors)
+    ax2.set_ylim(0,1)
 
-    input_tensor = TF.adjust_brightness(input_tensor,1+0.01*i)
-    og_img = TF.adjust_brightness(og_img,1+0.01*i)
+    # input_tensor = TF.adjust_brightness(input_tensor,1+0.01*i)
+    # og_img = TF.adjust_brightness(og_img,1+0.01*i)
+    # input_tensor = TF.adjust_contrast(input_tensor,1+0.01*i)
+    # og_img = TF.adjust_contrast(og_img,1+0.01*i)
+    input_tensor = TF.adjust_contrast(input_tensor,1-0.01*i)
+    og_img = TF.adjust_contrast(og_img,1-0.01*i)
+    # input_tensor += torch.randn((input_tensor.size()))
+    # og_img += torch.randn((og_img.size()))
+    
     time.sleep(0.1)

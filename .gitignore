@@ -1,5 +1,5 @@
 *.pth
-src/runs
+src/forgetting/runs
 data/
 
 # Byte-compiled / optimized / DLL files
