@@ -15,12 +15,13 @@ import torchvision.models as models
 
 resnet18 = models.resnet18(pretrained=True)
 resnet18.eval()
-# load image
-input_image = Image.open("Basketball2.jpeg")
 
-fig, (axr,ax0,ax1, ax2) = plt.subplots(1, 4,figsize=(15, 5),gridspec_kw={'width_ratios': [1,0.5,1.5, 3]})
+fig, (ax0,ax1, ax2) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [0.5,1.5, 3]})
 samp = Slider(ax0, 'amnt', 0, 3.0, valinit=1,orientation="vertical")
+axr = fig.add_axes([0.05, 0.7, 0.08, 0.15])
+axi = fig.add_axes([0.05, 0.5, 0.08, 0.15])
 radio = RadioButtons(axr, ('brightness', 'noise', 'sharpness'), active=0)
+radio2 = RadioButtons(axi, ('cup', 'sock', 'water bottle','backpack'), active=0)
 
 # unnormalize the tensor
 def get_og(input_tensor):
@@ -45,14 +46,18 @@ preprocess = transforms.Compose([
     ])
 
 print("start")
+input_image = Image.open("cup.JPEG")
 og_input_tensor = preprocess(input_image)
 og_input_img = get_og(og_input_tensor)
 corr = "brightness"
+img_class = "cup"
 
 def update(val):
     global og_input_tensor
     global og_input_img
     global corr
+    global img_class
+
     input_tensor = copy.deepcopy(og_input_tensor)
     og_img = copy.deepcopy(og_input_img)
     amp = samp.val
@@ -88,7 +93,7 @@ def update(val):
     for j in range(top5_prob.size(0)):
         labels.append(categories[top5_catid[j].cpu()])
     try:
-        idx = labels.index("basketball")
+        idx = labels.index(img_class)
     except:
         idx=6
     ax2.clear()
@@ -103,12 +108,16 @@ def update2(val):
     global corr
     corr = val
 radio.on_clicked(update2)
+
+def update3(val):
+    global img_class
+    global og_input_tensor
+    global og_input_img
+    img_class = val
+    # load image
+    input_image = Image.open(img_class+".JPEG")
+    og_input_tensor = preprocess(input_image)
+    og_input_img = get_og(og_input_tensor)
+radio2.on_clicked(update3)
+
 plt.show()
-    # input_tensor = TF.adjust_brightness(input_tensor,amp)
-    # og_img = TF.adjust_brightness(og_img,amp)
-    # input_tensor = TF.adjust_contrast(input_tensor,1+0.01*i)
-    # og_img = TF.adjust_contrast(og_img,1+0.01*i)
-    # input_tensor = TF.adjust_contrast(input_tensor,1-0.01*i)
-    # og_img = TF.adjust_contrast(og_img,1-0.01*i)
-    # input_tensor += torch.randn((input_tensor.size()))
-    # og_img += torch.randn((og_img.size()))
