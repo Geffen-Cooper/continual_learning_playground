@@ -14,6 +14,7 @@ import time
 # load image
 input_image = Image.open("Basketball2.jpeg")
 
+fig, (ax1, ax2) = plt.subplots(1, 2)
 plt.ion()
 plt.show()
 
@@ -28,6 +29,9 @@ def get_og(input_tensor):
     input_tensor[:][:][2]+=(0.405)
     return input_tensor
 
+with open("imagenet_classes.txt", "r") as f:
+    categories = [s.strip() for s in f.readlines()]
+
 preprocess = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
@@ -37,9 +41,9 @@ preprocess = transforms.Compose([
 
 input_tensor = preprocess(input_image)
 og_img = get_og(input_tensor)
-for i in range(10):
-    input_tensor = TF.adjust_brightness(input_tensor,1+0.2*i)
-    og_img = TF.adjust_brightness(og_img,1+0.2*i)
+for i in range(20):
+    input_tensor = TF.adjust_brightness(input_tensor,1+0.01*i)
+    og_img = TF.adjust_brightness(og_img,1+0.01*i)
     input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
@@ -54,15 +58,14 @@ for i in range(10):
     # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
     probabilities = torch.nn.functional.softmax(output[0], dim=0)
 
+    # ax2.clear()
     plt.pause(0.001)
-    plt.imshow(og_img.permute(1, 2, 0))
-    # plt.show()
-    # Read the categories
-    with open("imagenet_classes.txt", "r") as f:
-        categories = [s.strip() for s in f.readlines()]
+    ax1.imshow(og_img.permute(1, 2, 0))
+    
     # Show top categories per image
     top5_prob, top5_catid = torch.topk(probabilities, 5)
+    labels = []
     for i in range(top5_prob.size(0)):
-        labels = '{0:<15} {1:>8}'.format(categories[top5_catid[i]],"{:.4f}".format(top5_prob[i].item()))
-        txt = plt.text(230,10+i*20, labels,family='monospace')
-    time.sleep(0.5)
+        labels.append(categories[top5_catid[i].cpu()])
+    ax2.bar([0,30,60,190,220],top5_prob.cpu(),tick_label=labels,width=25)
+    time.sleep(0.1)
