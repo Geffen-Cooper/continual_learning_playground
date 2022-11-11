@@ -18,9 +18,9 @@ resnet18.eval()
 # load image
 input_image = Image.open("Basketball2.jpeg")
 
-fig, (ax0,ax1, ax2) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [1,1.5, 3]})
-fig.tight_layout(pad=5.0)
-samp = Slider(ax0, 'amnt', 0, 3.0, valinit=1)
+fig, (axr,ax0,ax1, ax2) = plt.subplots(1, 4,figsize=(15, 5),gridspec_kw={'width_ratios': [1,0.5,1.5, 3]})
+samp = Slider(ax0, 'amnt', 0, 3.0, valinit=1,orientation="vertical")
+radio = RadioButtons(axr, ('brightness', 'noise', 'sharpness'), active=0)
 
 # unnormalize the tensor
 def get_og(input_tensor):
@@ -47,15 +47,24 @@ preprocess = transforms.Compose([
 print("start")
 og_input_tensor = preprocess(input_image)
 og_input_img = get_og(og_input_tensor)
+corr = "brightness"
 
 def update(val):
     global og_input_tensor
     global og_input_img
+    global corr
     input_tensor = copy.deepcopy(og_input_tensor)
     og_img = copy.deepcopy(og_input_img)
     amp = samp.val
-    input_tensor = TF.adjust_brightness(input_tensor,amp)
-    og_img = TF.adjust_brightness(og_img,amp)
+    if corr == "brightness":
+        input_tensor = TF.adjust_brightness(input_tensor,amp)
+        og_img = TF.adjust_brightness(og_img,amp)
+    elif corr == "noise":
+        input_tensor += ((amp-1))*torch.randn((input_tensor.size()))
+        og_img += ((amp-1))*torch.randn(og_img.size())
+    elif corr == "sharpness":
+        input_tensor = TF.adjust_sharpness(input_tensor,amp)
+        og_img = TF.adjust_sharpness(og_img,amp)
 
     input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
@@ -89,6 +98,11 @@ def update(val):
     ax2.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25,color=colors)
     ax2.set_ylim(0,1)
 samp.on_changed(update)
+
+def update2(val):
+    global corr
+    corr = val
+radio.on_clicked(update2)
 plt.show()
     # input_tensor = TF.adjust_brightness(input_tensor,amp)
     # og_img = TF.adjust_brightness(og_img,amp)
