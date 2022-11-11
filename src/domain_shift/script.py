@@ -14,7 +14,7 @@ import time
 # load image
 input_image = Image.open("Basketball2.jpeg")
 
-fig, (ax1, ax2) = plt.subplots(1, 2)
+fig, (ax1, ax2) = plt.subplots(1, 2,figsize=(15, 15))
 plt.ion()
 plt.show()
 
@@ -41,9 +41,8 @@ preprocess = transforms.Compose([
 
 input_tensor = preprocess(input_image)
 og_img = get_og(input_tensor)
-for i in range(20):
-    input_tensor = TF.adjust_brightness(input_tensor,1+0.01*i)
-    og_img = TF.adjust_brightness(og_img,1+0.01*i)
+for i in range(40):
+    
     input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
@@ -67,5 +66,9 @@ for i in range(20):
     labels = []
     for i in range(top5_prob.size(0)):
         labels.append(categories[top5_catid[i].cpu()])
-    ax2.bar([0,30,60,190,220],top5_prob.cpu(),tick_label=labels,width=25)
+    ax2.clear()
+    ax2.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25)
+
+    input_tensor = TF.adjust_brightness(input_tensor,1+0.01*i)
+    og_img = TF.adjust_brightness(og_img,1+0.01*i)
     time.sleep(0.1)
