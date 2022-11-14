@@ -1,20 +1,18 @@
 import torch
 import matplotlib.pyplot as plt
-model = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
 import torchvision.transforms.functional as TF
-model.eval()
 import numpy as np
 import copy
 from matplotlib.widgets import Slider, Button, RadioButtons
 import cv2
-
-# sample execution (requires torchvision)
 from PIL import Image
 from torchvision import transforms
 import time
 import torchvision.models as models
 
-resnet18 = models.resnet18(pretrained=True)
+model = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', weights='MobileNet_V2_Weights.DEFAULT')
+model.eval()
+resnet18 = models.resnet18(weights='DEFAULT')
 resnet18.eval()
 
 fig, (ax0,ax1, ax2) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [0.5,1.5, 3]})
@@ -30,7 +28,7 @@ cap = cv2.VideoCapture(0)
 if (cap.isOpened()== False):
     print("Error opening video file")
 
-# unnormalize the tensor
+# unnormalize the tensor to visualize
 def get_og(input_tensor):
     input_tensor = copy.deepcopy(input_tensor).cpu()
     input_tensor[:][:][0]*=(.229)
@@ -59,6 +57,7 @@ og_input_img = get_og(og_input_tensor)
 corr = "brightness"
 img_class = "cup"
 
+
 def update(val):
     global og_input_tensor
     global og_input_img
@@ -69,7 +68,9 @@ def update(val):
     og_img = copy.deepcopy(og_input_img)
     amp = samp.val
     if corr == "brightness":
+        # print(input_tensor[0][0][0])
         input_tensor = TF.adjust_brightness(input_tensor,amp)
+        # print(input_tensor[0][0][0])
         og_img = TF.adjust_brightness(og_img,amp)
     elif corr == "noise":
         input_tensor += ((amp-1))*torch.randn((input_tensor.size()))
@@ -138,4 +139,5 @@ def update3(val):
     update(1)
 radio2.on_clicked(update3)
 
+update(1)
 plt.show()
