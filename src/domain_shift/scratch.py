@@ -13,17 +13,18 @@ import torchvision.models as models
 # load models
 mobilenet = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', weights='MobileNet_V2_Weights.DEFAULT')
 mobilenet.eval()
-resnet18 = models.resnet18(weights='DEFAULT')
-resnet18.eval()
+resnet50 = models.resnet50(weights='DEFAULT')
+resnet50.eval()
 
 # init gui
 fig, (sev_ax,img_ax,acc_ax) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [0.5,1.5, 3]})
 severity = Slider(sev_ax, 'amnt', 0, 3.0, valinit=1,orientation="vertical") # severity of corruptions
 corr_ax = fig.add_axes([0.05, 0.7, 0.08, 0.15]) # corruptions
 class_ax = fig.add_axes([0.05, 0.5, 0.08, 0.15]) # image type
-corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'sharpness'), active=0)
+model_ax = fig.add_axes([0.05, 0.3, 0.08, 0.15]) # image type
+corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine'), active=0)
 class_radio = RadioButtons(class_ax, ('cup', 'sock', 'water bottle','backpack','live'), active=0)
-
+model_radio = RadioButtons(model_ax, ('mobilenetV2', 'resnet50'), active=0)
 
 # init video capture object
 cap = cv2.VideoCapture(0)
@@ -66,7 +67,7 @@ preprocess = transforms.Compose([
 glob_input_image = Image.open("cup.JPEG")
 glob_corr = "brightness"
 glob_img_class = "cup"
-
+model = mobilenet
 
 def sev_update(val):
     start = time.time()
@@ -80,27 +81,22 @@ def sev_update(val):
     
     if glob_corr == "brightness":
         inf_tensor = TF.adjust_brightness(inf_tensor,amp)
-        # viz_tensor = TF.adjust_brightness(viz_tensor,amp)
     elif glob_corr == "noise":
         inf_tensor += ((amp-1))*torch.randn(inf_tensor.size())
-        # viz_tensor += ((amp-1))*torch.randn(viz_tensor.size())
-    elif glob_corr == "sharpness":
-        inf_tensor = TF.adjust_sharpness(inf_tensor,amp)
-        # viz_tensor = TF.adjust_sharpness(viz_tensor,amp)
+    elif glob_corr == "affine":
+        inf_tensor = TF.affine(inf_tensor,angle=0,translate=((amp-1)*25,(amp-1)*25),scale=1,shear=0)
     
     inf_tensor = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(inf_tensor)
-    viz_tensor = get_og(inf_tensor,ren=(glob_corr=="noise" or glob_corr=="sharpness"))
+    viz_tensor = get_og(inf_tensor,ren=(glob_corr=="noise" or glob_corr=="affine"))
     input_batch = inf_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
     if torch.cuda.is_available():
         input_batch = input_batch.to('cuda')
-        # resnet18.to('cuda')
-        mobilenet.to('cuda')
+        model.to('cuda')
 
     with torch.no_grad():
-        # output = resnet18(input_batch)
-        output = mobilenet(input_batch)
+        output = model(input_batch)
         
     
     # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
@@ -132,6 +128,14 @@ def corr_update(val):
     glob_corr = val
     sev_update(val)
 
+def model_update(val):
+    global model
+    if val == "mobilenetV2":
+        model = mobilenet
+    elif val == "resnet50":
+        model = resnet50
+    sev_update(1)
+
 
 def class_update(val):
     global glob_img_class
@@ -153,6 +157,7 @@ def class_update(val):
 severity.on_changed(sev_update)
 corr_radio.on_clicked(corr_update)
 class_radio.on_clicked(class_update)
+model_radio.on_clicked(model_update)
 
 sev_update(1)
 plt.show()
