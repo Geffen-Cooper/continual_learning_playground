@@ -22,8 +22,8 @@ severity = Slider(sev_ax, 'amnt', 0, 3.0, valinit=1,orientation="vertical") # se
 corr_ax = fig.add_axes([0.05, 0.7, 0.08, 0.15]) # corruptions
 class_ax = fig.add_axes([0.05, 0.5, 0.08, 0.15]) # image type
 model_ax = fig.add_axes([0.05, 0.3, 0.08, 0.15]) # image type
-corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine'), active=0)
-class_radio = RadioButtons(class_ax, ('cup', 'sock', 'water bottle','backpack','live'), active=0)
+corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine','resize'), active=0)
+class_radio = RadioButtons(class_ax, ('cup', 'sock', 'water bottle','backpack','earth','live'), active=0)
 model_radio = RadioButtons(model_ax, ('mobilenetV2', 'resnet50'), active=0)
 
 # init video capture object
@@ -85,9 +85,11 @@ def sev_update(val):
         inf_tensor += ((amp-1))*torch.randn(inf_tensor.size())
     elif glob_corr == "affine":
         inf_tensor = TF.affine(inf_tensor,angle=0,translate=((amp-1)*25,(amp-1)*25),scale=1,shear=0)
+    elif glob_corr == "resize":
+        inf_tensor = TF.affine(inf_tensor,angle=0,translate=(0,0),scale=amp,shear=0)
     
     inf_tensor = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(inf_tensor)
-    viz_tensor = get_og(inf_tensor,ren=(glob_corr=="noise" or glob_corr=="affine"))
+    viz_tensor = get_og(inf_tensor,ren=(glob_corr=="noise" or (glob_corr=="brightness" and amp > 1) or glob_corr=="affine"))
     input_batch = inf_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
@@ -96,11 +98,16 @@ def sev_update(val):
         model.to('cuda')
 
     with torch.no_grad():
+        # print(input_batch.size())
         output = model(input_batch)
         
     
     # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
     probabilities = torch.nn.functional.softmax(output[0], dim=0)
+    # odin = torch.max(torch.nn.functional.softmax(output[0]/10, dim=0))
+    # print(odin)
+    # if odin < 10**(-5):
+    #     print("out of distribution")
 
     img_ax.imshow(viz_tensor.permute(1, 2, 0))
     
@@ -148,6 +155,8 @@ def class_update(val):
         if ret == True:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             glob_input_image = Image.fromarray(frame)
+    elif glob_img_class == "earth":
+        glob_input_image = Image.open(glob_img_class+".jpg")
     else:
         glob_input_image = Image.open(glob_img_class+".JPEG")
 
