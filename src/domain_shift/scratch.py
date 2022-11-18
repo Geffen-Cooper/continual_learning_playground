@@ -23,7 +23,7 @@ corr_ax = fig.add_axes([0.05, 0.7, 0.08, 0.15]) # corruptions
 class_ax = fig.add_axes([0.05, 0.5, 0.08, 0.15]) # image type
 model_ax = fig.add_axes([0.05, 0.3, 0.08, 0.15]) # image type
 corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine','resize'), active=0)
-class_radio = RadioButtons(class_ax, ('cup', 'sock', 'water bottle','backpack','earth','live'), active=0)
+class_radio = RadioButtons(class_ax, ('Samoyed', 'sock', 'water bottle','backpack','earth','live'), active=0)
 model_radio = RadioButtons(model_ax, ('mobilenetV2', 'resnet50'), active=0)
 
 # init video capture object
@@ -63,10 +63,10 @@ preprocess = transforms.Compose([
         # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-# on startup use cup by default
-glob_input_image = Image.open("cup.JPEG")
+# on startup use binoculars by default
+glob_input_image = Image.open("Samoyed.JPEG")
 glob_corr = "brightness"
-glob_img_class = "cup"
+glob_img_class = "Samoyed"
 model = mobilenet
 
 def sev_update(val):
@@ -86,6 +86,7 @@ def sev_update(val):
     elif glob_corr == "affine":
         inf_tensor = TF.affine(inf_tensor,angle=0,translate=((amp-1)*25,(amp-1)*25),scale=1,shear=0)
     elif glob_corr == "resize":
+        # inf_tensor = TF.hflip(inf_tensor)
         inf_tensor = TF.affine(inf_tensor,angle=0,translate=(0,0),scale=amp,shear=0)
     
     inf_tensor = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(inf_tensor)
