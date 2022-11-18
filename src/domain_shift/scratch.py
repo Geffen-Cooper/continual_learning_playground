@@ -17,13 +17,13 @@ resnet50 = models.resnet50(weights='DEFAULT')
 resnet50.eval()
 
 # init gui
-fig, (sev_ax,img_ax,acc_ax) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [0.5,1.5, 3]})
+fig, (sev_ax,img_ax,acc_ax) = plt.subplots(1, 3,figsize=(15, 5),gridspec_kw={'width_ratios': [0.5,1.5, 4.5]})
 severity = Slider(sev_ax, 'amnt', 0, 3.0, valinit=1,orientation="vertical") # severity of corruptions
 corr_ax = fig.add_axes([0.05, 0.7, 0.08, 0.15]) # corruptions
 class_ax = fig.add_axes([0.05, 0.5, 0.08, 0.15]) # image type
 model_ax = fig.add_axes([0.05, 0.3, 0.08, 0.15]) # image type
 corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine','resize'), active=0)
-class_radio = RadioButtons(class_ax, ('Samoyed', 'sock', 'water bottle','backpack','earth','live'), active=0)
+class_radio = RadioButtons(class_ax, ('drake', 'sock', 'water bottle','backpack','earth','live'), active=0)
 model_radio = RadioButtons(model_ax, ('mobilenetV2', 'resnet50'), active=0)
 
 # init video capture object
@@ -64,9 +64,9 @@ preprocess = transforms.Compose([
     ])
 
 # on startup use binoculars by default
-glob_input_image = Image.open("Samoyed.JPEG")
+glob_input_image = Image.open("drake.JPEG")
 glob_corr = "brightness"
-glob_img_class = "Samoyed"
+glob_img_class = "drake"
 model = mobilenet
 
 def sev_update(val):
@@ -125,7 +125,7 @@ def sev_update(val):
     colors = ['b']*5
     if idx < 5:
         colors[idx] = 'r'
-    acc_ax.bar([0,30,60,90,120],top5_prob.cpu(),tick_label=labels,width=25,color=colors)
+    acc_ax.bar([0,50,100,150,200],top5_prob.cpu(),tick_label=labels,width=25,color=colors)
     acc_ax.set_ylim(0,1)
     plt.draw()
     # print(time.time()-start)
