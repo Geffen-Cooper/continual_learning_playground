@@ -1,6 +1,8 @@
 *.pth
 src/forgetting/runs
 data/
+*.pkl
+*.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
