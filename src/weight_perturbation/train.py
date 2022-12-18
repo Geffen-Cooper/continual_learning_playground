@@ -18,30 +18,49 @@ from models import *
 from datasets import *
 
 
-def train(args):
-    print("training configuration:")
-    print("Model: ",args.model)
-    print("Dataset:", args.dataset)
+seed = 42
+torch.manual_seed(seed)
+import random
+random.seed(seed)
+import numpy as np
+np.random.seed(seed)
+torch.backends.cudnn.deterministic = True
+
+def train(args,model=None,train_loader=None,val_loaders=None):
+    # print("training configuration:")
+    # print("Model: ",args.model)
+    # print("Dataset:", args.dataset)
 
 
     # first load the dataset
-    train_loader, val_loader, test_loader = load_dataset(args)
+    if train_loader == None or val_loaders == None:
+        train_loader, val_loader, test_loader = load_dataset(args)
+        val_loaders = [val_loader]
     
     # init tensorboard
     writer = SummaryWriter()
 
     # create the model
-    model = load_model(args.model).to(args.device)
+    if model == None:
+        print("load model from scratch")
+        model = load_model(args.model).to(args.device)
 
 
     # create the optimizer
-    optimizer = torch.optim.Adadelta(model.parameters(), lr=1)
-    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    # optimizer = torch.optim.Adadelta(model.parameters(), lr=1)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     best_val_acc = 0
 
     model.train()
     print(args.device)
     batch_iter = 0
+
+    train_losses = []
+    val_losses = [[] for i in range(len(val_loaders))]
+    val_accs = [[] for i in range(len(val_loaders))]
+    train_iters = []
+    val_iters = [[] for i in range(len(val_loaders))]
 
     for e in range(args.epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -49,28 +68,39 @@ def train(args):
             data, target = data.to(args.device), target.to(args.device)
             optimizer.zero_grad()
             output = model(data)
+
             loss = F.nll_loss(output, target)
-            writer.add_scalar("Loss/train", loss, batch_iter)
+            # writer.add_scalar("Loss/train", loss, batch_iter)
+            train_losses.append(loss.item())
+            train_iters.append(batch_iter)
         
             loss.backward()
             optimizer.step()
 
             if batch_idx % args.log_interval == 0:
-                # evaluate on the validation set
-                val_acc, val_loss = validate(model, val_loader,args)
-                writer.add_scalar("Loss/val", val_loss, batch_iter)
-                writer.add_scalar("Accuracy/val", val_acc, batch_iter)
+                # evaluate on all the validation sets
+                for idx, val_loader in enumerate(val_loaders):
+                    val_acc, val_loss = validate(model, val_loader,args)
+                    # writer.add_scalar("Loss/val", val_loss, batch_iter)
+                    # writer.add_scalar("Accuracy/val", val_acc, batch_iter)
+                    val_losses[idx].append(val_loss)
+                    val_accs[idx].append(val_acc)
+                    val_iters[idx].append(batch_iter)
 
-                print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f} (best val acc: {:.3f})'.format(
-                    e, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss, val_loss, val_acc, best_val_acc))
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f} (best val acc: {:.3f})'.format(
+                        e, batch_idx * len(data), len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader), loss, val_loss, val_acc, best_val_acc))
 
             batch_iter+=1
 
-        # evaluate on the validation set
-        val_acc, val_loss = validate(model, val_loader,args)
-        writer.add_scalar("Loss/val", val_loss, batch_iter)
-        writer.add_scalar("Accuracy/val", val_acc, batch_iter)
+        # evaluate on all the validation sets
+        for idx,val_loader in enumerate(val_loaders):
+            val_acc, val_loss = validate(model, val_loader,args)
+            # writer.add_scalar("Loss/val", val_loss, batch_iter)
+            # writer.add_scalar("Accuracy/val", val_acc, batch_iter)
+            val_losses[idx].append(val_loss)
+            val_accs[idx].append(val_acc)
+            val_iters[idx].append(batch_iter)
 
         # Save the best validation accuracy and the corresponding model.
         if best_val_acc < val_acc:
@@ -79,74 +109,21 @@ def train(args):
                 'epoch': e+1,
                 'model_state_dict': model.state_dict(),
                 'val_acc': best_val_acc,
-                }, 'best_'+str(args.model)+'_' + str(args.dataset)+'.pth')
+                'train_loss':train_losses,
+                'train_iter':train_iters,
+                'val_loss': val_loss,
+                'val_accs':val_accs,
+                'val_iter':val_iters
+                }, str(args.log_name)+'.pth')
 
         # print the 
         print('In epoch {}, train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f} (best val acc: {:.3f}))'.format(
             e, loss, val_loss, val_acc, best_val_acc))
-        scheduler.step()
-
-def train_simple(train_loader, val_loader, args, model=None):
-
-    # init tensorboard
-    writer = SummaryWriter()
-
-    # create the model
-    if model == None:
-        model = load_model(args.model).to(args.device)
+        # scheduler.step()
+    
+    return model,train_losses,train_iters,val_losses,val_accs,val_iters
 
 
-    # create the optimizer
-    optimizer = torch.optim.Adadelta(model.parameters(), lr=1)
-    scheduler = StepLR(optimizer, step_size=1, gamma=0.7)
-    best_val_acc = 0
-
-    model.train()
-    print(args.device)
-    batch_iter = 0
-
-    for e in range(1):
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # Forward
-            data, target = data.to(args.device), target.to(args.device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            writer.add_scalar("Loss/train", loss, batch_iter)
-        
-            loss.backward()
-            optimizer.step()
-
-            if batch_idx % 300 == 0:
-                # evaluate on the validation set
-                val_acc, val_loss = validate(model, val_loader,args)
-                writer.add_scalar("Loss/val", val_loss, batch_iter)
-                writer.add_scalar("Accuracy/val", val_acc, batch_iter)
-
-                print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f} (best val acc: {:.3f})'.format(
-                    e, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss, val_loss, val_acc, best_val_acc))
-
-            batch_iter+=1
-
-        # evaluate on the validation set
-        val_acc, val_loss = validate(model, val_loader,args)
-        writer.add_scalar("Loss/val", val_loss, batch_iter)
-        writer.add_scalar("Accuracy/val", val_acc, batch_iter)
-
-        # Save the best validation accuracy and the corresponding model.
-        if best_val_acc < val_acc:
-            best_val_acc = val_acc
-            torch.save({
-                'epoch': e+1,
-                'model_state_dict': model.state_dict(),
-                'val_acc': best_val_acc,
-                }, 'best_'+str(args.model)+'_' + str(args.dataset)+'.pth')
-
-        # print the 
-        print('In epoch {}, train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f} (best val acc: {:.3f}))'.format(
-            e, loss, val_loss, val_acc, best_val_acc))
-        scheduler.step()
     
 def validate(model, val_loader,args):
     model.eval()
@@ -174,10 +151,6 @@ def validate(model, val_loader,args):
 def load_dataset(args):
     if args.dataset == "mnist":
         return load_mnist(args)
-    elif args.dataset == "svhn":
-        return load_svhn(args)
-    elif args.dataset == "usps":
-        return load_usps(args)
 
 # ================================ models =====================================
 
@@ -194,11 +167,12 @@ def parse_args():
     # logging details
     parser.add_argument('--model', type=str, default='digits', help='model architecture: digits')
     parser.add_argument('--dataset', type=str, default = 'mnist', help='dataset name: mnist, svhn, usps')
+    parser.add_argument('--log_name', type=str, default = 'default', help='checkpoint file name')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=1024, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=1, metavar='N',
+    parser.add_argument('--epochs', type=int, default=2, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')

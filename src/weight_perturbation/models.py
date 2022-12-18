@@ -5,6 +5,14 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 
+seed = 42
+torch.manual_seed(seed)
+import random
+random.seed(seed)
+import numpy as np
+np.random.seed(seed)
+torch.use_deterministic_algorithms(True)
+
 # model for classifying 28x28 digits (i.e. MNIST, SVHN, USPS)
 class DigitClassifier(nn.Module):
     def __init__(self):

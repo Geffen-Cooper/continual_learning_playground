@@ -5,66 +5,79 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 import matplotlib.pyplot as plt
+import random
+import numpy as np
 
 seed = 42
 torch.manual_seed(seed)
+random.seed(seed)
+np.random.seed(seed)
+
+
+def seed_worker(worker_id):
+    np.random.seed(seed)
+    random.seed(seed)
+
 
 class permute(object):
     """permute the image in a fixed way.
     """
 
-    def __init__(self):
-        self.first = True
+    def __init__(self,idx_perm):
+        self.idx_perm = idx_perm
 
     def __call__(self, sample):
         img = sample[0]
 
-        h, w = img.shape[:2]
+        h, w = img.size()[:2]
         img = torch.flatten(img)
-        if self.first == True:
-            self.idxs = torch.randperm(h*w)
-            self.first = False
         
-        img = img[self.idxs]
+        img = img[self.idx_perm]
         return torch.reshape(img,(1,h,w))
 
-def load_mnist(args):
+
+def load_mnist(args,rand_seed):
+    torch.manual_seed(rand_seed)
+    idx_perm = torch.randperm(784)
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+    g = torch.Generator()
+    g.manual_seed(seed)
+    
+
     transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
             ])
 
-    train_set = datasets.MNIST('../data', train=True, download=True,
-                    transform=transform)
-    test_set = datasets.MNIST('../data', train=False,
-                    transform=transform)
-    train_split, val_split = torch.utils.data.random_split(train_set, [50000, 10000],torch.Generator().manual_seed(42))
-
-    train_loader = torch.utils.data.DataLoader(train_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
-
-    if args.permuted == False:
-        return train_loader, val_loader, test_loader
-    else:
-        transform=transforms.Compose([
+    perm_transform=transforms.Compose([
             transforms.ToTensor(),
-            permute(),
-            transforms.Normalize((0.1307,), (0.3081,))
+            transforms.Normalize((0.1307,), (0.3081,)),
+            permute(idx_perm)
             ])
 
-        perm_train_set = datasets.MNIST('../data', train=True, download=True,
-                    transform=transform)
-        perm_test_set = datasets.MNIST('../data', train=False,
+    if args.permuted == False:
+        train_set = datasets.MNIST('../data', train=True, download=True,
                         transform=transform)
+        test_set = datasets.MNIST('../data', train=False,
+                        transform=transform)
+    else:
+        train_set = datasets.MNIST('../data', train=True, download=True,
+                        transform=perm_transform)
+        test_set = datasets.MNIST('../data', train=False,
+                        transform=perm_transform)
 
-        perm_train_split, perm_val_split = torch.utils.data.random_split(perm_train_set, [50000, 10000],torch.Generator().manual_seed(42))
+    train_split, val_split = torch.utils.data.random_split(train_set, [50000, 10000],torch.Generator().manual_seed(42))
 
-        perm_train_loader = torch.utils.data.DataLoader(perm_train_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-        perm_val_loader = torch.utils.data.DataLoader(perm_val_split, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-        perm_test_loader = torch.utils.data.DataLoader(perm_test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(train_split, batch_size=args.batch_size, shuffle=True, pin_memory=True,generator=g,worker_init_fn=seed_worker,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_split, batch_size=args.batch_size, shuffle=True, pin_memory=True,generator=g,worker_init_fn=seed_worker,num_workers=4)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.test_batch_size, shuffle=True, pin_memory=True,generator=g,worker_init_fn=seed_worker)
 
-        return train_loader, val_loader, test_loader, perm_train_loader, perm_val_loader, perm_test_loader
+    
+    return train_loader, val_loader, test_loader
 
 
 
