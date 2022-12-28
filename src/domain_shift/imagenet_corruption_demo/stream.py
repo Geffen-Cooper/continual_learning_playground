@@ -10,8 +10,12 @@ from torchvision import transforms
 import time
 import torchvision.models as models
 
+
+torch.backends.quantized.engine = 'qnnpack'
+
 # load models
 mobilenet = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', weights='MobileNet_V2_Weights.DEFAULT')
+# mobilenet = models.quantization.mobilenet_v2(weights='DEFAULT',quantize=True)
 mobilenet.eval()
 resnet50 = models.resnet50(weights='DEFAULT')
 resnet50.eval()
@@ -22,7 +26,7 @@ severity = Slider(sev_ax, 'amnt', 0, 3.0, valinit=1,orientation="vertical") # se
 corr_ax = fig.add_axes([0.05, 0.7, 0.08, 0.15]) # corruptions
 class_ax = fig.add_axes([0.05, 0.5, 0.08, 0.15]) # image type
 model_ax = fig.add_axes([0.05, 0.3, 0.08, 0.15]) # image type
-corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine','resize'), active=0)
+corr_radio = RadioButtons(corr_ax, ('brightness', 'noise', 'affine','contrast'), active=0)
 class_radio = RadioButtons(class_ax, ('drake', 'sock', 'water bottle','backpack','earth','live'), active=0)
 model_radio = RadioButtons(model_ax, ('mobilenetV2', 'resnet50'), active=0)
 
@@ -57,8 +61,8 @@ with open("imagenet_classes.txt", "r") as f:
 
 # preprocess imagenet inputs
 preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize(64),
+        # transforms.CenterCrop(224),
         transforms.ToTensor()
         # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
@@ -85,18 +89,17 @@ def sev_update(val):
         inf_tensor += ((amp-1))*torch.randn(inf_tensor.size())
     elif glob_corr == "affine":
         inf_tensor = TF.affine(inf_tensor,angle=0,translate=((amp-1)*25,(amp-1)*25),scale=1,shear=0)
-    elif glob_corr == "resize":
-        # inf_tensor = TF.hflip(inf_tensor)
-        inf_tensor = TF.affine(inf_tensor,angle=0,translate=(0,0),scale=amp,shear=0)
+    elif glob_corr == "contrast":
+        inf_tensor = TF.adjust_contrast(inf_tensor,amp)
     
     inf_tensor = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(inf_tensor)
     viz_tensor = get_og(inf_tensor,ren=(glob_corr=="noise" or (glob_corr=="brightness" and amp > 1) or glob_corr=="affine"))
     input_batch = inf_tensor.unsqueeze(0) # create a mini-batch as expected by the model
 
     # move the input and model to GPU for speed if available
-    if torch.cuda.is_available():
-        input_batch = input_batch.to('cuda')
-        model.to('cuda')
+    # if torch.cuda.is_available():
+    #     input_batch = input_batch.to('cuda')
+    #     model.to('cuda')
 
     with torch.no_grad():
         # print(input_batch.size())

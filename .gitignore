@@ -3,7 +3,8 @@ src/forgetting/runs
 data/
 *.pkl
 *.gz
-
+runs/
+*.tar
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
