@@ -13,7 +13,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import os
 import torchvision
-
+from tqdm import tqdm
 
 def train(model,train_loader,val_loader,device):
     
@@ -21,9 +21,9 @@ def train(model,train_loader,val_loader,device):
     writer = SummaryWriter()
 
     # create the optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01,momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.045,weight_decay=0.00004)
     # scheduler1 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7,14,20], gamma=0.2)
-    scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
     best_val_acc = 0
 
     model.train()
@@ -98,7 +98,7 @@ def validate(model, val_loader, device):
     with torch.no_grad():
         # confusion_matrix = torch.zeros(200, 200)
         i=0
-        for data, target in val_loader:
+        for data, target in tqdm(val_loader):
             data, target = data.to(device), target.to(device)
 
             # Forward
@@ -115,7 +115,7 @@ def validate(model, val_loader, device):
 
             correct5 += correct_top5[:5].reshape(-1).float().sum(0).item()
             i+=1
-            print(i*batch_size)
+            # print(i*batch_size)
             # print(pred)
             # for t, p in zip(target.view(-1), pred.view(-1)):
             #     confusion_matrix[t.long(), p.long()] += 1

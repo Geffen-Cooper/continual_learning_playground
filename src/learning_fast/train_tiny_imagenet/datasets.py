@@ -50,7 +50,7 @@ class TinyImagenet(Dataset):
             # go through directory tree to get all img file paths
             i=0
             for class_dir in sorted(os.listdir(train_dir)):
-                if i == 20:
+                if i == 10:
                     break
                 for f in os.listdir(os.path.join(train_dir,class_dir,"images")):
                     self.img_paths.append(os.path.join(train_dir,class_dir,"images",f))
@@ -73,6 +73,7 @@ class TinyImagenet(Dataset):
     def __getitem__(self, idx):
         # read the image
         img = Image.open(self.img_paths[idx])
+        img = img.convert("RGB") 
 
         # apply transform
         if self.transform:
@@ -117,10 +118,9 @@ def load_tiny_imagenet(batch_size,rand_seed):
     
     root_dir = os.path.expanduser("~/Projects/data/tiny-imagenet-200")
     ts = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1) if x.size(0)==1 else x),
+                transforms.PILToTensor(),
                 transforms.RandomHorizontalFlip(0.5),
-                transforms.RandomAffine(10,[0.2,0.2]),
+                transforms.ConvertImageDtype(torch.float),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
@@ -131,7 +131,7 @@ def load_tiny_imagenet(batch_size,rand_seed):
     # split training and validation)
     g_cpu = torch.Generator()
     g_cpu.manual_seed(rand_seed)
-    train_split, val_split = torch.utils.data.random_split(train_set, [4500*2, 500*2],generator=g_cpu)
+    train_split, val_split = torch.utils.data.random_split(train_set, [90000, 10000],generator=g_cpu)
 
     # create the data loaders
     train_loader = torch.utils.data.DataLoader(train_split, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4,generator=g_cpu)
@@ -144,50 +144,65 @@ def load_tiny_imagenet(batch_size,rand_seed):
 
 
 
-class ImagenetVal(Dataset):
-    """Imagenet validation dataset.
+class Imagenet(Dataset):
+    """Imagenet dataset.
 
     """
 
-    def __init__(self, root_dir,transform=None):
+    def __init__(self, root_dir,transform=None,train=True,class_subset=None):
         """
         Args:
-            root_dir (string): directory where tinyimagenet unzipped
+            root_dir (string): directory where train and val sets are
             transform (callable, optional): transform to be applied on a sample
         """
         self.root_dir = root_dir
         self.transform = transform
 
+        self.train_dir = os.path.join(root_dir,"train")
+        self.val_dir = os.path.join(root_dir,"val")
+
         # get the class ids as a list in sorted order
-        self.class_id_list = sorted(os.listdir(root_dir))
+        self.class_id_list = sorted(os.listdir(self.train_dir))
 
         # map from class id to clas idx, e.g. n0144... --> 0, the idx is the label
         self.class_idx_map = {self.class_id_list[i] : i for i in range(0, len(self.class_id_list))}
         
         # get the mapping from class ids to readable names, e.g. n0144... --> 'goldfish'
-        df = pd.read_csv("mapping.txt",sep=":",header=None)
+        df = pd.read_csv(os.path.join(root_dir,"mapping.txt"),sep=":",header=None)
         df[1] = df[1].apply(lambda row: row.split(',')[0].replace("'",""))
         self.class_name_map = dict(zip(df[0], df[1]))
 
 
         self.labels = []
         self.img_paths = []
+        
+        if train:
+            set_dir = self.train_dir
+        else:
+            set_dir = self.val_dir
 
         # go through directory tree to get all img file paths
-        i=0
-        for class_dir in sorted(os.listdir(root_dir)):
-            if i == 200:
-                break
-            for f in os.listdir(os.path.join(root_dir,class_dir)):
-                self.img_paths.append(os.path.join(root_dir,class_dir,f))
+        for class_dir in sorted(os.listdir(set_dir)):
+            for f in os.listdir(os.path.join(set_dir,class_dir)):
+                self.img_paths.append(os.path.join(set_dir,class_dir,f))
                 self.labels.append(self.class_idx_map[class_dir])
-            i+=1
 
+        if class_subset != None:
+            label_tensor = torch.tensor(self.labels)
+            self.dataset_idxs = []
+            for c in class_subset:
+                self.dataset_idxs.extend((label_tensor==c).nonzero().view(-1).tolist())
+        else:
+            self.dataset_idxs = list(range(len(self.labels)))
 
 
     def __getitem__(self, idx):
+        # remap the idx
+        idx = self.dataset_idxs[idx]
+
         # read the image
         img = Image.open(self.img_paths[idx])
+        img = img.convert("RGB") 
 
         # apply transform
         if self.transform:
@@ -200,7 +215,7 @@ class ImagenetVal(Dataset):
         return img, label
 
     def __len__(self):
-        return len(self.img_paths)
+        return len(self.dataset_idxs)
 
     def visualize_batch(self):
         batch_size = 64
@@ -228,17 +243,99 @@ class ImagenetVal(Dataset):
         plt.show()
 
 
-def load_imagenet_val(batch_size,rand_seed):
+def load_imagenet(batch_size,rand_seed,train=True,class_subset=None):
     
-    root_dir = os.path.expanduser("~/Projects/data/imagenet_val/val")
+    root_dir = os.path.expanduser("~/Projects/data/imagenet")
+
+    if train:
+        train_tf = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.RandomHorizontalFlip(0.5),
+                    transforms.PILToTensor(),
+                    transforms.ConvertImageDtype(torch.float),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+
+        # load the training dataset and make the validation split
+        train_set = Imagenet(root_dir,train_tf,train=True,class_subset=class_subset)
+        num_train = int(0.9*len(train_set))
+        train_split, val_split = torch.utils.data.random_split(train_set, [num_train, len(train_set)-num_train],torch.Generator().manual_seed(42))
+
+        train_loader = torch.utils.data.DataLoader(train_split, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+        val_loader = torch.utils.data.DataLoader(val_split, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+
+        return train_loader, val_loader
+
+    else:
+        test_tf = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.PILToTensor(),
+                    transforms.ConvertImageDtype(torch.float),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+
+        # load the test set
+        test_set = Imagenet(root_dir,test_tf,train=False,class_subset=class_subset)
+
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, pin_memory=True)
+
+        return test_loader
+
+
+def load_imagenet64(batch_size,rand_seed,train=True,class_subset=None):
+    
+    root_dir = os.path.expanduser("~/Projects/data/imagenet")
+
+    if train:
+        train_tf = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.Resize(64),
+                    transforms.RandomHorizontalFlip(0.5),
+                    transforms.PILToTensor(),
+                    transforms.ConvertImageDtype(torch.float),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+
+        # load the training dataset and make the validation split
+        train_set = Imagenet(root_dir,train_tf,train=True,class_subset=class_subset)
+        num_train = int(0.9*len(train_set))
+        train_split, val_split = torch.utils.data.random_split(train_set, [num_train, len(train_set)-num_train],torch.Generator().manual_seed(42))
+
+        train_loader = torch.utils.data.DataLoader(train_split, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+        val_loader = torch.utils.data.DataLoader(val_split, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+
+        return train_loader, val_loader
+
+    else:
+        test_tf = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.Resize(64),
+                    transforms.PILToTensor(),
+                    transforms.ConvertImageDtype(torch.float),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+
+        # load the test set
+        test_set = Imagenet(root_dir,test_tf,train=False,class_subset=class_subset)
+
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, pin_memory=True)
+
+        return test_loader
+
+
+def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1):
+    
+    root_dir = os.path.join(os.path.expanduser("~/Projects/data/imagenetc_val"),corruption,str(severity))
     ts = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1) if x.size(0)==1 else x),
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
-                # transforms.Resize(128),
-                # transforms.RandomHorizontalFlip(0.5),
-                # transforms.RandomAffine(10,[0.2,0.2]),
+                transforms.Resize(64),
+                transforms.PILToTensor(),
+                transforms.ConvertImageDtype(torch.float),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
