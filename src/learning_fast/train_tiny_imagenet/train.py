@@ -15,15 +15,16 @@ import os
 import torchvision
 from tqdm import tqdm
 
-def train(model,train_loader,val_loader,device):
+def train(model,train_loader,val_loader,device,lr):
     
     # init tensorboard
     writer = SummaryWriter()
 
     # create the optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.045,weight_decay=0.00004)
-    # scheduler1 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7,14,20], gamma=0.2)
-    scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr,weight_decay=0.00004,momentum=0.9)
+    # scheduler1 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5,10,20], gamma=0.2)
+    # scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+    scheduler1 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
     best_val_acc = 0
 
     model.train()
@@ -45,17 +46,33 @@ def train(model,train_loader,val_loader,device):
             optimizer.step()
 
             if batch_idx % 800 == 0:
-                # evaluate on all the validation sets
-                val_acc, val_loss, top5 = validate(model,val_loader,device)
-                writer.add_scalar("Loss/val", val_loss, batch_iter)
-                writer.add_scalar("Accuracy/val", val_acc, batch_iter)
-
-                print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f}, top5: {:.3f}, lr: {:.8f}'.format(
+                print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, lr: {:.8f}'.format(
                     e, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss, val_loss, val_acc, top5, scheduler2.get_last_lr()[0]))
-
+                    100. * batch_idx / len(train_loader), loss, scheduler1.get_last_lr()[0]))
+                scheduler1.step()
             batch_iter+=1
-        scheduler2.step()
+        # scheduler1.step()
+            
+        # evaluate on all the validation sets
+        val_acc, val_loss, top5 = validate(model,val_loader,device)
+        writer.add_scalar("Loss/val", val_loss, batch_iter)
+        writer.add_scalar("Accuracy/val", val_acc, batch_iter)
+        print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, val loss: {:.3f}, val acc: {:.3f}, top5: {:.3f}, lr: {:.8f}'.format(
+            e, batch_idx * len(data), len(train_loader.dataset),
+            100. * batch_idx / len(train_loader), loss, val_loss, val_acc, top5, scheduler1.get_last_lr()[0]))
+        # scheduler1.step()
+        if best_val_acc < val_acc:
+            print("==================== best validation accuracy ====================")
+            print("epoch: {}, val accuracy: {}".format(e,val_acc))
+            best_val_acc = val_acc
+            torch.save({
+                'epoch': e+1,
+                'model_state_dict': model.state_dict(),
+                'val_acc': best_val_acc,
+                'val_loss': val_loss,
+                'lr': scheduler1.get_last_lr(),
+                }, 'best_batch_i'+str(batch_iter)+'.pth')
+        # scheduler2.step()
 
         # evaluate on all the validation sets
         # for idx,val_loader in enumerate(val_loaders):
