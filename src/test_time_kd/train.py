@@ -23,8 +23,8 @@ def train(model,train_loader,val_loader,device,lr):
     # create the optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=lr,weight_decay=0.00004,momentum=0.9)
     # scheduler1 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5,10,20], gamma=0.2)
-    # scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
-    scheduler1 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
+    scheduler2 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+    scheduler1 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     best_val_acc = 0
 
     model.train()
@@ -51,7 +51,7 @@ def train(model,train_loader,val_loader,device,lr):
                     100. * batch_idx / len(train_loader), loss, scheduler1.get_last_lr()[0]))
                 scheduler1.step()
             batch_iter+=1
-        # scheduler1.step()
+        scheduler2.step()
             
         # evaluate on all the validation sets
         val_acc, val_loss, top5 = validate(model,val_loader,device)
