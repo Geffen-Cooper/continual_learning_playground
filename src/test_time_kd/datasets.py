@@ -273,7 +273,7 @@ def load_imagenet(batch_size,rand_seed,train=True,class_subset=None,resize=224):
         # load the test set
         test_set = Imagenet(root_dir,test_tf,class_subset=class_subset)
 
-        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, pin_memory=True)
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, pin_memory=True)
 
         return test_loader
 
@@ -310,7 +310,7 @@ def load_imagenet64(batch_size,rand_seed,train=True,class_subset=None):
         # load the test set
         test_set = Imagenet(root_dir,test_tf,class_subset=class_subset)
 
-        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, pin_memory=True)
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, pin_memory=True)
 
         return test_loader
 
@@ -328,7 +328,7 @@ def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity
     val_set = Imagenet(root_dir,ts)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, pin_memory=True,num_workers=4)
 
     return val_loader
 
@@ -345,7 +345,7 @@ def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severi
     val_set = Imagenet(root_dir,ts)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=True, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, pin_memory=True,num_workers=4)
 
     return val_loader
 
