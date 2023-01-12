@@ -8,8 +8,8 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import os
 from PIL import Image
-
-
+import copy
+import numpy as np
 
 class TinyImagenet(Dataset):
     """Tiny Imagenet dataset.
@@ -315,7 +315,7 @@ def load_imagenet64(batch_size,rand_seed,train=True,class_subset=None):
         return test_loader
 
 
-def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1):
+def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False):
     
     root_dir = os.path.join(os.path.expanduser("~/Projects/data/imagenetc_val"),corruption,str(severity))
     ts = transforms.Compose([
@@ -325,14 +325,14 @@ def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity
             ])
 
     # load the dataset
-    val_set = Imagenet(root_dir,ts)
+    val_set = Imagenet(root_dir,ts,class_subset)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=4)
 
     return val_loader
 
-def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1):
+def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False):
     
     root_dir = os.path.join(os.path.expanduser("~/Projects/data/ImageNet-64x64-C"),corruption,str(severity))
     ts = transforms.Compose([
@@ -342,10 +342,10 @@ def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severi
             ])
 
     # load the dataset
-    val_set = Imagenet(root_dir,ts)
+    val_set = Imagenet(root_dir,ts,class_subset)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=4)
 
     return val_loader
 
@@ -355,6 +355,18 @@ def visualize_batch(data_loader):
     (imgs, labels) = next(iter(data_loader))
     
     imgs,labels = imgs.to("cpu"), labels.to("cpu")
+
+    input_tensor = copy.deepcopy(imgs).cpu()
+
+    # undo imagenet normalization
+    for it in input_tensor:
+        it[0][:][:]*=(.229)
+        it[0][:][:]+=(0.485)
+        it[1][:][:]*=(.224)
+        it[1][:][:]+=(0.455)
+        it[2][:][:]*=(.225)
+        it[2][:][:]+=(0.405)
+        it = ((it-torch.min(it))/torch.max(it-torch.min(it)))
 
     # display the batch in a grid with the img, label, idx
     rows = 8
@@ -371,9 +383,12 @@ def visualize_batch(data_loader):
             idx = i*rows+j
 
             # create text labels
-            text = str(labels[idx].item())
-            
-            ax_array[i,j].imshow(imgs[idx].permute(1, 2, 0))
+            try:
+                text = data_loader.dataset.dataset.class_name_map[data_loader.dataset.dataset.class_id_list[labels[idx]]]
+            except:
+                text = data_loader.dataset.class_name_map[data_loader.dataset.class_id_list[labels[idx]]]
+
+            ax_array[i,j].imshow((input_tensor[idx].permute(1, 2, 0).numpy()*255).astype(np.uint8))
 
             ax_array[i,j].set_title(text,color="black")
             ax_array[i,j].set_xticks([])
