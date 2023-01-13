@@ -315,10 +315,11 @@ def load_imagenet64(batch_size,rand_seed,train=True,class_subset=None):
         return test_loader
 
 
-def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False):
+def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False,resize=224):
     
     root_dir = os.path.join(os.path.expanduser("~/Projects/data/imagenetc_val"),corruption,str(severity))
     ts = transforms.Compose([
+                transforms.Resize(resize),
                 transforms.PILToTensor(),
                 transforms.ConvertImageDtype(torch.float),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
