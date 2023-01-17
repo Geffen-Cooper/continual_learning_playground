@@ -1,0 +1,9 @@
+Q1. test cosine similarity between two untrained domains in successsion
+    -a:does fine-tuning on a domain enable distinction between it and other domains
+    -b:how much fine-tuning is required
+    -c:do we finetune by minimizing cosine similarity or something else
+    -d:how does this apply to other datasets
+    -e:what if the student model did not start from the teacher initialization (e.g. we use v3_small as student)
+
+A1. we don't need to test cosine similarity between two untrained domains in successsion because looking at the plots from before
+    we can see the cosine similarity is close to zero for all corruptions so we won't see a transition
