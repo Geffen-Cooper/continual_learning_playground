@@ -315,7 +315,7 @@ def load_imagenet64(batch_size,rand_seed,train=True,class_subset=None):
         return test_loader
 
 
-def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False,resize=224):
+def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False,resize=224,sampler=None):
     
     root_dir = os.path.join(os.path.expanduser("~/Projects/data/imagenetc_val"),corruption,str(severity))
     ts = transforms.Compose([
@@ -329,11 +329,11 @@ def load_imagenetc_val(batch_size,rand_seed,corruption="gaussian_noise",severity
     val_set = Imagenet(root_dir,ts,class_subset)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, sampler=sampler,pin_memory=True,num_workers=4)
 
     return val_loader
 
-def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False):
+def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severity=1,class_subset=None,shuffle=False,sampler=None):
     
     root_dir = os.path.join(os.path.expanduser("~/Projects/data/ImageNet-64x64-C"),corruption,str(severity))
     ts = transforms.Compose([
@@ -346,7 +346,7 @@ def load_imagenetc64_val(batch_size,rand_seed,corruption="gaussian_noise",severi
     val_set = Imagenet(root_dir,ts,class_subset)
 
     # create the data loader
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, sampler=sampler,pin_memory=True,num_workers=4)
 
     return val_loader
 

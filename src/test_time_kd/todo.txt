@@ -5,5 +5,16 @@ Q1. test cosine similarity between two untrained domains in successsion
     -d:how does this apply to other datasets
     -e:what if the student model did not start from the teacher initialization (e.g. we use v3_small as student)
 
-A1. we don't need to test cosine similarity between two untrained domains in successsion because looking at the plots from before
-    we can see the cosine similarity is close to zero for all corruptions so we won't see a transition
+A1. found a bug so the method doesn't actually work
+
+============================================================================
+
+Q2. How can we improve the student
+    -try training offline in batches
+    -try the 128x128 v3 model
+
+A2. It works better but improvement is negligible. For example, the student went
+    from ~34% to ~36% after distillation on a couple hundred images. At least it 
+    is learning with relatively few images, but the improvement is small. We want
+    at least 5% if we are using a lot of MACs. Also, we need to look at the
+    avergae boost by plotting on the acc vs MACs diagram
