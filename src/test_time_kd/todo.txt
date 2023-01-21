@@ -18,3 +18,10 @@ A2. It works better but improvement is negligible. For example, the student went
     is learning with relatively few images, but the improvement is small. We want
     at least 5% if we are using a lot of MACs. Also, we need to look at the
     avergae boost by plotting on the acc vs MACs diagram
+    -same for the 128x128, improvement is negligible
+
+============================================================================
+
+Let's try to detect domain shift using the entropy of the softmax output
+like other people do. We can also show the confidence diagrams for the extra
+corruptions as justification without overfitting.
