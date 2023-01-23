@@ -15,7 +15,7 @@ import os
 import torchvision
 from tqdm import tqdm
 
-def train(model,train_loader,val_loader,device,lr):
+def train(model,train_loader,val_loader,device,lr,grad_accum=None):
     
     # init tensorboard
     writer = SummaryWriter()
@@ -33,23 +33,36 @@ def train(model,train_loader,val_loader,device,lr):
 
     for e in range(100):
         for batch_idx, (data, target) in enumerate(train_loader):
+            print("train, num samples:", len(target))
             # Big Forward
             data, target = data.to(device), target.to(device)
 
-            optimizer.zero_grad()
-            output = model(data)
-            # print(output)
-            # print(target)
-            loss = nn.CrossEntropyLoss()(output, target)
-            writer.add_scalar("Loss/train", loss, batch_iter)
-            loss.backward()
-            optimizer.step()
+            if grad_accum != None:
+                output = model(data)
+                loss = nn.CrossEntropyLoss()(output, target)
+                loss = loss/grad_accum
+                writer.add_scalar("Loss/train", loss, batch_iter)
+                loss.backward()
+                if ((batch_idx + 1) % grad_accum == 0) or (batch_idx + 1 == len(train_loader)):
+                    optimizer.step()
+                    optimizer.zero_grad()
+                
+            else:
+                optimizer.zero_grad()
+                output = model(data)
+                # print(output)
+                # print(target)
+                loss = nn.CrossEntropyLoss()(output, target)
+                writer.add_scalar("Loss/train", loss, batch_iter)
+                loss.backward()
+                optimizer.step()
 
             if batch_idx % 800 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)] train loss: {:.3f}, lr: {:.8f}'.format(
                     e, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss, scheduler1.get_last_lr()[0]))
-                scheduler1.step()
+                if batch_idx > 0:
+                    scheduler1.step()
             batch_iter+=1
         scheduler2.step()
             
