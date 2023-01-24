@@ -20,8 +20,32 @@ A2. It works better but improvement is negligible. For example, the student went
     avergae boost by plotting on the acc vs MACs diagram
     -same for the 128x128, improvement is negligible
 
+Update, batched learning seems to be necessary as online updates are too noisy,
+as a result I use gradient accumulation. If we can find a novel way to update in
+the right direction very fast (i.e. meta learning) then that would be ideal
+
 ============================================================================
 
 Let's try to detect domain shift using the entropy of the softmax output
 like other people do. We can also show the confidence diagrams for the extra
 corruptions as justification without overfitting.
+
+entropy doesn't work
+
+
+============================================================================
+
+for model updates, maybe supress small gradients and amplify strong gradients,
+see how that effects the accuracy
+
+does resetting the weights for each domain shift help? i.e. is it easier to adapt from
+the original model or the current model
+    NO, resetting the model doesn't help
+
+=====================================
+To do
+-plot the naive methods for a sampling of thresholds, 10%, 20%, 30%, 40%, 50% as baselines
+-from these baselines, see if we can improve through selective training?
+    -i.e. if we train, can we make it so that we are below the threshold less? Check using model efficiency
+-change from MACS to flops
+-see if we can possibly plot the MSDNET or RANNET or ensemble of resenet on here along with there ideal curves

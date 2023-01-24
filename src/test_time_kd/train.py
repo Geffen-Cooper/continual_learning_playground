@@ -15,7 +15,7 @@ import os
 import torchvision
 from tqdm import tqdm
 
-def train(model,train_loader,val_loader,device,lr,grad_accum=None):
+def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None):
     
     # init tensorboard
     writer = SummaryWriter()
@@ -31,7 +31,7 @@ def train(model,train_loader,val_loader,device,lr,grad_accum=None):
     model = model.to(device)
     batch_iter = 0
 
-    for e in range(100):
+    for e in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
             print("train, num samples:", len(target))
             # Big Forward
