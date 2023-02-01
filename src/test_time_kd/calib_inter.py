@@ -161,6 +161,7 @@ def stud_rel_update(val):
     stud_avg_acc_text.set(text="acc: "+str(round(acc,3)))
     stud_avg_conf_line.set(xdata=conf*10-0.5)
     stud_avg_conf_text.set(text="conf: "+str(round(conf,3)))
+    tradeoff_update(1)
     plt.draw()
 
 stud_ou.on_clicked(stud_rel_update)
@@ -227,6 +228,7 @@ def teach_rel_update(val):
     teach_avg_acc_text.set(text="acc: "+str(round(acc,3)))
     teach_avg_conf_line.set(xdata=conf*10-0.5)
     teach_avg_conf_text.set(text="conf: "+str(round(conf,3)))
+    tradeoff_update(1)
     plt.draw()
 
 teach_ou.on_clicked(teach_rel_update)
