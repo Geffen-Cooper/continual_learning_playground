@@ -49,3 +49,19 @@ To do
     -i.e. if we train, can we make it so that we are below the threshold less? Check using model efficiency
 -change from MACS to flops
 -see if we can possibly plot the MSDNET or RANNET or ensemble of resenet on here along with there ideal curves
+
+
+
+=================================================
+
+=================================================
+
+=================================================
+
+Analyzing domain shift
+
+Q1. How is top 5 or top 10 score affected after domain shift? Is it more robust than
+    top 1? This would suggest that the shift was small enough so that the model 
+    still assigns some non-negligible confidence to the class. Another thing to
+    check is how far the shifted points are from the source centroids relative to
+    all the other classes.

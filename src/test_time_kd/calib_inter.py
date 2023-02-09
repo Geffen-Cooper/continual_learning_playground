@@ -7,7 +7,7 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 
 
 # ==================== set up global variables ==================== #
-n_bins = 10
+n_bins = 15
 bin_boundaries = torch.linspace(0, 1, n_bins + 1)
 bin_lowers = bin_boundaries[:-1]
 bin_uppers = bin_boundaries[1:]
@@ -42,7 +42,7 @@ fig, axs = plt.subplot_mosaic([['tradeoff_plot','stud_dist','stud_dist_mu','teac
                                ['tradeoff_plot','stud_rel','stud_rel_sigma','teach_rel','teach_rel_sigma'],
                                ['tradeoff_plot','stud_rel','stud_rel_scale','teach_rel','teach_rel_scale'],
                                ['tradeoff_slider','stud_ECE','stud_ou','teach_ECE','teach_ou']],figsize=(20, 8),
-                               gridspec_kw={'width_ratios': [1,0.65,0.25,0.65,0.25],'height_ratios': [0.5,0.5,0.5,0.5,0.5,0.5,0.5]})
+                               gridspec_kw={'width_ratios': [1.5,0.75,0.25,0.75,0.25],'height_ratios': [0.65,0.65,0.5,0.5,0.5,0.5,0.5]})
 
 # initialize widgets
 stud_dist_mu = Slider(axs['stud_dist_mu'], 'μ', 0, 1.0, valinit=0.35,orientation="horizontal")

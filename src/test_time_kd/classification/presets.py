@@ -17,8 +17,7 @@ class ClassificationPresetTrain:
         augmix_severity=3,
         random_erase_prob=0.0,
     ):
-        # trans = [transforms.RandomResizedCrop(crop_size, interpolation=interpolation)]
-        trans=[]
+        trans = [transforms.RandomResizedCrop(crop_size, interpolation=interpolation)]
         if hflip_prob > 0:
             trans.append(transforms.RandomHorizontalFlip(hflip_prob))
         if auto_augment_policy is not None:

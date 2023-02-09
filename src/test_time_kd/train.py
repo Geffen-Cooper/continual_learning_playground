@@ -14,8 +14,9 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 import torchvision
 from tqdm import tqdm
+import time
 
-def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None):
+def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None,log_name="log"):
     
     # init tensorboard
     writer = SummaryWriter()
@@ -33,7 +34,7 @@ def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None):
 
     for e in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
-            print("train, num samples:", len(target))
+            # print("train, num samples:", len(target))
             # Big Forward
             data, target = data.to(device), target.to(device)
 
@@ -84,7 +85,7 @@ def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None):
                 'val_acc': best_val_acc,
                 'val_loss': val_loss,
                 'lr': scheduler1.get_last_lr(),
-                }, 'best_batch_i'+str(batch_iter)+'.pth')
+                }, 'mnv3s/best_batch_i'+str(batch_iter)+log_name+str(time.time())+'.pth')
         # scheduler2.step()
 
         # evaluate on all the validation sets
@@ -121,6 +122,7 @@ def train(model,train_loader,val_loader,device,lr,epochs,grad_accum=None):
     
 def validate(model, val_loader, device):
     model.eval()
+    model = model.to(device)
     val_loss = 0
     correct = 0
     correct5 = 0
@@ -140,6 +142,54 @@ def validate(model, val_loader, device):
             batch_size = target.size(0)
 
             _, pred_top5 = torch.topk(output, 5, 1, True, True)
+            pred_top5 = pred_top5.t()
+            correct_top5 = pred_top5.eq(target.view(1, -1).expand_as(pred_top5))
+
+            correct5 += correct_top5[:5].reshape(-1).float().sum(0).item()
+            i+=1
+            # print(i*batch_size)
+            # print(pred)
+            # for t, p in zip(target.view(-1), pred.view(-1)):
+            #     confusion_matrix[t.long(), p.long()] += 1
+                
+        # print(confusion_matrix)
+
+        # Compute loss and accuracy
+        val_loss /= len(val_loader) # cross entropy returns batch mean
+        val_acc = correct / len(val_loader.dataset)
+        val_acc_top5 = correct5 / len(val_loader.dataset)
+        return val_acc, val_loss, val_acc_top5
+
+
+def validate_ensemble(models, val_loader, device):
+    for i,m in enumerate(models):
+        models[i] = models[i].to(device)
+        models[i].eval()
+    val_loss = 0
+    correct = 0
+    correct5 = 0
+    out_shape = models[0](next(iter(val_loader))[0][0].unsqueeze(0).to(device)).shape[1]
+    with torch.no_grad():
+        # confusion_matrix = torch.zeros(200, 200)
+        i=0
+        for data, target in tqdm(val_loader):
+            data, target = data.to(device), target.to(device)
+
+            # Forward
+            confidences = torch.zeros((len(target),out_shape)).to(device)
+            n = len(models)
+            for i,m in enumerate(models):
+                # confidences += F.softmax(m(data),dim=1)*((i+1)/(0.5*(n*(n+1))))
+                confidences += F.softmax(m(data),dim=1)
+            confidences /= len(models)
+
+            pred = confidences.argmax(dim=1, keepdim=True)
+            val_loss += nn.CrossEntropyLoss()(confidences, target).item()  # sum up batch loss
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+            batch_size = target.size(0)
+
+            _, pred_top5 = torch.topk(confidences, 5, 1, True, True)
             pred_top5 = pred_top5.t()
             correct_top5 = pred_top5.eq(target.view(1, -1).expand_as(pred_top5))
 

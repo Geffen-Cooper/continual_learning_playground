@@ -128,10 +128,12 @@ def load_data(traindir, valdir, args):
         print(f"Loading dataset_train from {cache_path}")
         dataset, _ = torch.load(cache_path)
     else:
+        # We need a default value for the variables below because args may come
+        # from train_quantization.py which doesn't define them.
         auto_augment_policy = getattr(args, "auto_augment", None)
         random_erase_prob = getattr(args, "random_erase", 0.0)
-        ra_magnitude = args.ra_magnitude
-        augmix_severity = args.augmix_severity
+        ra_magnitude = getattr(args, "ra_magnitude", None)
+        augmix_severity = getattr(args, "augmix_severity", None)
         dataset = torchvision.datasets.ImageFolder(
             traindir,
             presets.ClassificationPresetTrain(
@@ -314,11 +316,11 @@ def main(args):
 
     model_ema = None
     if args.model_ema:
-        # Decay adjustment that aims to keep the decay independent from other hyper-parameters originally proposed at:
+        # Decay adjustment that aims to keep the decay independent of other hyper-parameters originally proposed at:
         # https://github.com/facebookresearch/pycls/blob/f8cd9627/pycls/core/net.py#L123
         #
         # total_ema_updates = (Dataset_size / n_GPUs) * epochs / (batch_size_per_gpu * EMA_steps)
-        # We consider constant = Dataset_size for a given dataset/setup and ommit it. Thus:
+        # We consider constant = Dataset_size for a given dataset/setup and omit it. Thus:
         # adjust = 1 / total_ema_updates ~= n_GPUs * batch_size_per_gpu * EMA_steps / epochs
         adjust = args.world_size * args.batch_size * args.model_ema_steps / args.epochs
         alpha = 1.0 - args.model_ema_decay
@@ -491,13 +493,13 @@ def get_args_parser(add_help=True):
         "--interpolation", default="bilinear", type=str, help="the interpolation method (default: bilinear)"
     )
     parser.add_argument(
-        "--val-resize-size", default=64, type=int, help="the resize size used for validation (default: 256)"
+        "--val-resize-size", default=256, type=int, help="the resize size used for validation (default: 256)"
     )
     parser.add_argument(
-        "--val-crop-size", default=64, type=int, help="the central crop size used for validation (default: 224)"
+        "--val-crop-size", default=224, type=int, help="the central crop size used for validation (default: 224)"
     )
     parser.add_argument(
-        "--train-crop-size", default=64, type=int, help="the random crop size used for training (default: 224)"
+        "--train-crop-size", default=224, type=int, help="the random crop size used for training (default: 224)"
     )
     parser.add_argument("--clip-grad-norm", default=None, type=float, help="the maximum gradient norm (default None)")
     parser.add_argument("--ra-sampler", action="store_true", help="whether to use Repeated Augmentation in training")
