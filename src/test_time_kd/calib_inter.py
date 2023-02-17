@@ -288,7 +288,10 @@ for p in policies:
     confs_S = np.array([b.get_height() for b in stud_dist_bars]) # confidence weight per bin
 
     # expected acc/cost is calculated using student bins higher/lower than conf threshold weighted by corresponding acc/cost
-    exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
+    if p < 1:
+        exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
+    else:
+        exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
     exp_cost = sum(confs_S[cal_bin_accs > p])*cost_S + sum(confs_S[cal_bin_accs <= p]*(cost_T+cost_S))
     if p == policy.val:
         conf_tradeoffs.append(axs['tradeoff_plot'].scatter(exp_cost,exp_acc,color="red"))
@@ -309,7 +312,10 @@ def tradeoff_update(val):
     for i,p in enumerate(policies):
         accs_S = np.array([a.get_height() for a in stud_rel_bars])
         confs_S = np.array([b.get_height() for b in stud_dist_bars])
-        exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
+        if p < 1:
+            exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
+        else:
+            exp_acc = sum(accs_S[cal_bin_accs > p]*confs_S[cal_bin_accs > p]) + sum(confs_S[cal_bin_accs <= p])*avg_T_acc
         exp_cost = sum(confs_S[cal_bin_accs > p])*cost_S + sum(confs_S[cal_bin_accs <= p]*(cost_T+cost_S))
         if p == policy.val:
             conf_tradeoffs[i].set_offsets((exp_cost,exp_acc))
