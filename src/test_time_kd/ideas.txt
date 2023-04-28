@@ -1,0 +1,10 @@
+Q: How do we flag uncertain regions? We can not purely rely on confidence-label alignment because there
+   may be a point with high confidence correctly classified and a point right next to it with high confidence
+   incorrectly classified. We need to find and define regions where there is high uncertainty about whether
+   the point is correctly classified despite confidence.
+
+    We need to first define what high uncertainty means. An point that is high uncertainty is one for which
+    the confidence disagees strongly with its ground truth label (Note that this does not necesarily mean
+    that a point with high confidence with correct label is high certainty because two such point could be close).
+    Maybe a better definition is a point whose nearest neighbor has a different class but the points have similar
+    confidence distributions and are classified the same.
